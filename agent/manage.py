@@ -64,7 +64,28 @@ class Manage(object):
     async def devices(self) -> list[Device]:
         cmd = [self.adb, "devices"]
         resp = await Terminal.cmd_line(cmd)
-        return []
+
+        if not resp or not (lines := [line.strip() for line in resp.splitlines() if line.strip()]):
+            return []
+
+        if "not found" in resp.lower() or resp.lower().startswith("adb:") or resp.lower().startswith("error"):
+            return []
+
+        devices: list[Device] = []
+        for line in lines:
+            if line.lower().startswith("list of devices"):
+                continue
+
+            if len(parts := line.split()) < 2:
+                continue
+
+            serial, status = parts[0], parts[1]
+            if status != "device":
+                continue
+
+            devices.append(Device(self.adb, serial))
+
+        return devices
 
 
 if __name__ == '__main__':
