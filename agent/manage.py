@@ -8,6 +8,8 @@
 
 import typing
 import asyncio
+from pathlib import Path
+from loguru import logger
 from agent.device import Device
 from agent.terminal import Terminal
 from utils import const
@@ -15,23 +17,23 @@ from utils import const
 
 class McpServer(object):
 
-    def __init__(self, program: str):
-        self.program = program
+    def __init__(self, program: Path | str):
+        self.program = str(program)
         self.transports: typing.Optional[asyncio.subprocess.Process] = None
 
     async def input_stream(self) -> None:
         async for line in self.transports.stdout:
-            print(line.decode(const.CHARSET).strip())
+            logger.info(line.decode(const.CHARSET, const.IGNORE).strip())
 
     async def error_stream(self) -> None:
         async for line in self.transports.stderr:
-            print(line.decode(const.CHARSET).strip())
+            logger.info(line.decode(const.CHARSET, const.IGNORE).strip())
 
     async def mcp_begin(self) -> None:
         if self.transports and self.transports.returncode is None:
             return None
 
-        cmd = [self.program]
+        cmd = ["python", self.program]
         self.transports = await Terminal.cmd_link(cmd)
 
         asyncio.create_task(self.input_stream())
@@ -39,13 +41,13 @@ class McpServer(object):
 
         await asyncio.sleep(1)
 
-        print("✅ MCP started")
+        logger.info("Ⓜ️ MCP started ...")
 
     async def mcp_final(self) -> None:
         if not self.transports or self.transports.returncode is not None:
             return None
 
-        print("🛑 Stopping MCP...")
+        logger.info("☣️ MCP Stopping ...")
 
         self.transports.terminate()
         try:
@@ -53,7 +55,7 @@ class McpServer(object):
         except asyncio.TimeoutError:
             self.transports.kill()
 
-        print("✅ MCP stopped")
+        logger.info("♻️ MCP stopped ...")
 
 
 class Manage(object):

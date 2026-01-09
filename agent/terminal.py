@@ -7,6 +7,7 @@
 
 import typing
 import asyncio
+from utils import const
 
 
 class Terminal(object):
@@ -21,9 +22,9 @@ class Terminal(object):
         stdout, stderr = await transports.communicate()
 
         if stdout:
-            return stdout.decode(encoding="utf-8", errors="ignore").strip()
+            return stdout.decode(const.CHARSET, const.IGNORE).strip()
         if stderr:
-            return stderr.decode(encoding="utf-8", errors="ignore").strip()
+            return stderr.decode(const.CHARSET, const.IGNORE).strip()
 
     @staticmethod
     async def cmd_link(cmd: list[str]) -> asyncio.subprocess.Process:
