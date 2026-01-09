@@ -1,0 +1,21 @@
+# 默认规则
+* text=auto eol=lf
+
+# 指定文件类型的换行规则
+*.iss  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.sh   text eol=lf
+*.py   text eol=lf
+*.md   text eol=lf
+*.html text eol=lf
+*.txt  text eol=lf
+
+# 图像与二进制文件
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.bmp  binary
+*.ico  binary
+*.zip  binary
+*.exe  binary
