@@ -6,6 +6,7 @@
 #                           |___/
 #
 
+import sys
 import typing
 import asyncio
 from pathlib import Path
@@ -33,7 +34,7 @@ class McpServer(object):
         if self.transports and self.transports.returncode is None:
             return None
 
-        cmd = ["python", self.program]
+        cmd = [sys.executable, self.program]
         self.transports = await Terminal.cmd_link(cmd)
 
         asyncio.create_task(self.input_stream())
