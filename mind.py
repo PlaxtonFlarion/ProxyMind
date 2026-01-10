@@ -1,5 +1,7 @@
+import re
 import sys
 import signal
+import typing
 import asyncio
 from pathlib import Path
 from loguru import logger
@@ -8,36 +10,65 @@ from mcp import (
     ClientSession, ListToolsResult
 )
 from mcp.client.streamable_http import streamable_http_client
+from engine.design import Design
 from engine.manage import McpServer
 from engine.terminal import Terminal
-from utils import (
-    craft, request
-)
+from engine.tinker import Active
+from utils import request
 
 
 def signal_processor(*_, **__) -> None:
-    logger.info(f"Received signal {signal.SIGINT}")
+    Design.console.print()
+    logger.info(f"📞 Received signal {signal.SIGINT} ...")
     sys.exit(0)
 
 
-async def boot() -> McpServer:
-    await craft.setup_logger()
+async def mind_boot() -> McpServer:
+    Active.active("DEBUG")
 
     root = Path(__file__).parent
 
     program = Path(root, "agent", "mcp_server.py")
     # program = Path(root, "applications", "mcp_server.app", "Contents", "MacOS", "mcp_server")
     # program = Path(root, "applications", "mcp_server.dist", "mcp_server.exe")
-    await Terminal.cmd_line(["chmod", "+x", program])
+
+    if sys.platform == "darwin":
+        await Terminal.cmd_line(["chmod", "+x", program])
 
     return McpServer(program)
 
 
-async def trip(message: str, model: str = "llama-3.3-70b-versatile") -> None:
+async def mind_trip(
+    message: str,
+    model: typing.Union[
+        str,
+        typing.Literal[
+            "compound-beta",
+            "compound-beta-mini",
+            "gemma2-9b-it",
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "meta-llama/llama-guard-4-12b",
+            "moonshotai/kimi-k2-instruct",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3-32b",
+        ],
+    ] = "llama-3.3-70b-versatile"
+) -> None:
 
-    url = "http://127.0.0.1:3333/mcp"
+    async def exec_looper() -> None:
+        for i in range(plan.get("loop_count", 1)):
+            for step in steps:
+                action = step["action"]
+                result = await session.call_tool(action["action"], action["args"])
 
-    async with streamable_http_client(url) as (r, w, _):
+                if result.isError: return logger.error(result.content[0].text)
+                else: logger.info(f"{result.content[0].text}")
+
+    async with streamable_http_client("http://127.0.0.1:3333/mcp") as (r, w, _):
         async with ClientSession(r, w) as session:
             await session.initialize()
 
@@ -55,26 +86,34 @@ async def trip(message: str, model: str = "llama-3.3-70b-versatile") -> None:
                 for tool in list_tools.tools
             ]
 
-            for tool in openai_tools: logger.info(f"⚙️ Tool {tool}")
+            for tool in openai_tools: logger.debug(f"⚙️ Tool {tool['function']['name']}")
 
             payload = {"model": model, "message": message, "tools": openai_tools}
 
             async for plan in request.stream_planner(payload):
                 if not (steps := plan.get("steps")):
                     continue
+                await exec_looper()
 
-                for step in steps:
-                    action = step["action"]
-                    result = await session.call_tool(action["action"], action["args"])
 
-                    if result.content:
-                        logger.info(f"Content: {result.content[0].text}")
-                    elif result.structuredContent:
-                        logger.info(f"StructuredContent: {result.structuredContent}")
-                    elif result.isError:
-                        return logger.error(f"IsError: {result.isError}")
+async def mind_loop() -> None:
+    doc = """\
+    /help              显示帮助
+    /quit              退出
+    /repeat N <goal>   将目标重复执行 N 次
+    /tools             查看可用工具（如果你有输出方法）
+    """
 
-                    await asyncio.sleep(1)
+    ask = "[bold #AFD7FF]\n🤔 Mind 输入目标或 /help[/]"
+
+    while (raw := Prompt.ask(ask)) not in {"/quit", "quit", "exit"}:
+        if raw.strip() in {"/help", "help"}:
+            Design.console.print(doc); continue
+
+        if m := re.match(r"^/repeat\s+(\d+)\s+(.+)$", raw.strip()):
+            await mind_trip(f"{m.group(2)}，循环 {int(m.group(1))} 次"); continue
+
+        await mind_trip(raw)
 
 
 async def main() -> None:
@@ -83,19 +122,14 @@ async def main() -> None:
     # lsof -ti :3333 | xargs kill -9
     # Get-NetTCPConnection -LocalPort 3333 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 
-    server = await boot()
+    server = await mind_boot()
 
     await server.mcp_begin()
-
     signal.signal(signal.SIGINT, signal_processor)
 
-    try:
-        while (action := Prompt.ask(f"[bold #AFD7FF]🤔 Exec[/]")) != "88":
-            await trip(action)
-    # except Exception as e:
-    #     logger.error(e)
-    finally:
-        await server.mcp_final()
+    try: await mind_loop()
+    except Exception as e: logger.error(e); raise e
+    finally: await server.mcp_final()
 
 
 if __name__ == '__main__':

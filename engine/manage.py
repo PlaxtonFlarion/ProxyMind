@@ -24,17 +24,17 @@ class McpServer(object):
 
     async def input_stream(self) -> None:
         async for line in self.transports.stdout:
-            logger.info(line.decode(const.CHARSET, const.IGNORE).strip())
+            logger.debug(line.decode(const.CHARSET, const.IGNORE).strip())
 
     async def error_stream(self) -> None:
         async for line in self.transports.stderr:
-            logger.info(line.decode(const.CHARSET, const.IGNORE).strip())
+            logger.debug(line.decode(const.CHARSET, const.IGNORE).strip())
 
     async def mcp_begin(self) -> None:
         if self.transports and self.transports.returncode is None:
             return None
 
-        cmd = [sys.executable, self.program]
+        cmd = [sys.executable, self.program]  # todo
         self.transports = await Terminal.cmd_link(cmd)
 
         asyncio.create_task(self.input_stream())
@@ -42,13 +42,13 @@ class McpServer(object):
 
         await asyncio.sleep(1)
 
-        logger.info("Ⓜ️ MCP started ...")
+        logger.info(f"Ⓜ️ {const.APP_DESC} MCP started ...")
 
     async def mcp_final(self) -> None:
         if not self.transports or self.transports.returncode is not None:
             return None
 
-        logger.info("☣️ MCP Stopping ...")
+        logger.info(f"☣️ {const.APP_DESC} MCP Stopping ...")
 
         self.transports.terminate()
         try:
@@ -56,7 +56,7 @@ class McpServer(object):
         except asyncio.TimeoutError:
             self.transports.kill()
 
-        logger.info("♻️ MCP stopped ...")
+        logger.info(f"♻️ {const.APP_DESC} MCP stopped ...")
 
 
 class Manage(object):
@@ -70,6 +70,8 @@ class Manage(object):
         if not self.device_list:
             self.device_list = await self.devices()
 
+        if not self.device_list:
+            raise RuntimeError("Device not connected ...")
         return self.device_list
 
     async def devices(self) -> list[Device]:

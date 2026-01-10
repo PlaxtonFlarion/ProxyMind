@@ -17,20 +17,15 @@ async def handle_event(event: dict) -> None:
         case "thinking":
             logger.info(f"🟣 Plan {event['content']}")
         case "plan":
-            for step in event.get("steps") or []: logger.info(f"🟠 Plan {step}")
+            if steps := event.get("steps"):
+                for step in steps: logger.info(f"🟠 Plan {step['action']}")
+            else: logger.warning(f"🔴 Plan {event}")
         case "done":
             logger.info(f"🟢 Plan done ...")
 
 
-async def stream_planner(
-    payload: dict[str, typing.Any],
-    *,
-    timeout: float = 60.0,
-    on_event: typing.Optional[typing.Callable] = None,
-) -> typing.AsyncGenerator[dict, None]:
-
-    url = f"https://api.appserverx.com/planner"
-
+async def stream_planner(payload: dict[str, typing.Any], timeout: float = 60.0) -> typing.AsyncGenerator[dict, None]:
+    url     = f"https://api.appserverx.com/planner"
     headers = {
         "Accept": "text/event-stream", "Content-Type": "application/json"
     }
@@ -48,7 +43,7 @@ async def stream_planner(
                 except json.JSONDecodeError:
                     continue
 
-                await (on_event or handle_event)(event)
+                await handle_event(event)
 
                 yield event
 

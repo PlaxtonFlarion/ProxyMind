@@ -3,14 +3,16 @@ import asyncio
 from loguru import logger
 from mcp.server import FastMCP
 from engine.manage import Manage
-from utils import craft
+from utils import const
 
-mcp = FastMCP(name="ProxyMind", json_response=True, port=3333)
-
-manage = Manage("adb")
-
-asyncio.set_event_loop(loop := asyncio.new_event_loop())
-loop.run_until_complete(craft.setup_logger())
+mcp = FastMCP(
+    name=const.APP_DESC,
+    website_url=const.APP_URL,
+    host="127.0.0.1",
+    port=3333,
+    json_response=True
+)
+mng = Manage("adb")
 
 
 @mcp.tool()
@@ -50,7 +52,7 @@ async def click(by: typing.Literal["text", "resource-id"], value: str) -> typing
     - UI 文案或 ID 变化将导致匹配失败
     """
 
-    device_list = await manage.refresh()
+    device_list = await mng.refresh()
 
     logger.info(f"Click by {by} value={value}")
     return await asyncio.gather(
@@ -86,7 +88,7 @@ async def send_keys(text: str) -> typing.Any:
     当输入框已处于焦点状态时使用。
     """
 
-    device_list = await manage.refresh()
+    device_list = await mng.refresh()
 
     logger.info(f"Send keys {text}")
     return await asyncio.gather(
@@ -116,7 +118,7 @@ async def tap(x: int, y: int) -> typing.Any:
     当无法通过控件属性定位时使用坐标点击。
     """
 
-    device_list = await manage.refresh()
+    device_list = await mng.refresh()
 
     logger.info(f"Tap {x} {y}")
     return await asyncio.gather(
@@ -148,7 +150,7 @@ async def swipe(x1: int, y1: int, x2: int, y2: int, duration: int = 300) -> typi
     用于页面滚动、列表翻页、拖动操作。
     """
 
-    device_list = await manage.refresh()
+    device_list = await mng.refresh()
 
     logger.info(f"Swipe {x1} {y1} {x2} {y2} {duration}")
     return await asyncio.gather(
@@ -184,7 +186,7 @@ async def key_event(keycode: int) -> typing.Any:
     用于系统级导航与确认操作。
     """
 
-    device_list = await manage.refresh()
+    device_list = await mng.refresh()
 
     logger.info(f"KeyEvent {keycode}")
     return await asyncio.gather(
@@ -193,15 +195,15 @@ async def key_event(keycode: int) -> typing.Any:
 
 
 @mcp.tool()
-async def sleep(seconds: float) -> None:
+async def sleep(delay: float) -> None:
     """
     等待指定秒数。
 
     参数：
-    - seconds: 等待时间（秒，可为小数）
+    - delay: 等待时间（秒，可为小数）
 
     行为：
-    - 当前任务挂起指定时间，不与设备交互
+    - 当前任务仅按时间延迟，不检测页面状态、不判断加载完成
 
     返回：
     - 无返回值
@@ -210,10 +212,16 @@ async def sleep(seconds: float) -> None:
     sleep(1.5)
 
     Agent 使用语义：
-    用于等待页面加载、动画完成或系统稳定。
+    仅用于插入固定时间延迟，不能保证页面已加载完成。
+    不应作为页面状态判断手段使用。
+
+    约束：
+    - sleep 只是时间等待，不代表页面就绪
+    - 后续操作仍可能失败，需要结合点击结果或页面验证
     """
-    logger.info(f"Wait {seconds}")
-    await asyncio.sleep(seconds)
+
+    logger.info(f"Wait {delay}")
+    await asyncio.sleep(delay)
 
 
 if __name__ == "__main__":
