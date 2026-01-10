@@ -32,7 +32,7 @@ class Device(object):
         cmd = self.prefix + [
             "shell", "uiautomator", "dump", "/sdcard/window_dump.xml"
         ]
-        await Terminal.cmd_line(dump_cmd)
+        await Terminal.cmd_line(cmd)
 
         cmd = self.prefix + [
             "shell", "cat", "/sdcard/window_dump.xml"
