@@ -11,8 +11,8 @@ import typing
 import asyncio
 from pathlib import Path
 from loguru import logger
-from agent.device import Device
-from agent.terminal import Terminal
+from engine.device import Device
+from engine.terminal import Terminal
 from utils import const
 
 
@@ -61,12 +61,19 @@ class McpServer(object):
 
 class Manage(object):
 
+    device_list: list[Device] = []
+
     def __init__(self, adb: str) -> None:
         self.adb = adb
 
+    async def refresh(self) -> list[Device]:
+        if not self.device_list:
+            self.device_list = await self.devices()
+
+        return self.device_list
+
     async def devices(self) -> list[Device]:
-        cmd = [self.adb, "devices"]
-        resp = await Terminal.cmd_line(cmd)
+        resp = await Terminal.cmd_line([self.adb, "devices"])
 
         if not resp or not (lines := [line.strip() for line in resp.splitlines() if line.strip()]):
             return []
@@ -74,7 +81,7 @@ class Manage(object):
         if "not found" in resp.lower() or resp.lower().startswith("adb:") or resp.lower().startswith("error"):
             return []
 
-        devices: list[Device] = []
+        device_list: list[Device] = []
         for line in lines:
             if line.lower().startswith("list of devices"):
                 continue
@@ -86,9 +93,9 @@ class Manage(object):
             if status != "device":
                 continue
 
-            devices.append(Device(self.adb, serial))
+            device_list.append(Device(self.adb, serial))
 
-        return devices
+        return device_list
 
 
 if __name__ == '__main__':

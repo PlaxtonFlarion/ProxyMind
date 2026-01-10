@@ -8,8 +8,8 @@ from mcp import (
     ClientSession, ListToolsResult
 )
 from mcp.client.streamable_http import streamable_http_client
-from agent.manage import McpServer
-from agent.terminal import Terminal
+from engine.manage import McpServer
+from engine.terminal import Terminal
 from utils import (
     craft, request
 )
@@ -79,6 +79,7 @@ async def trip(message: str, model: str = "llama-3.3-70b-versatile") -> None:
 
 async def main() -> None:
     # nuitka --macos-create-app-bundle --show-progress --output-dir=applications agent/mcp_server.py
+    # nuitka --mode=standalone --product-name=Mind --product-version=1.0.0 --windows-icon-from-ico=schematic/resources/icons/butterfly.ico --show-progress --show-memory --assume-yes-for-downloads --output-dir=applications agent/mcp_server.py
     # lsof -ti :3333 | xargs kill -9
     # Get-NetTCPConnection -LocalPort 3333 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 
